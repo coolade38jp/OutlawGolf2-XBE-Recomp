@@ -7,7 +7,7 @@
 
 using namespace kernel;
 
-X86_EXTERN_FUNC(GUEST_ORIG(BinkGetSummary));
+X86_EXTERN_ORIG(GUEST_ORIG(BinkGetSummary));
 X86_FUNC(GUEST(BinkGetSummary)) {
     uint32_t bink = R32(ctx.esp + 4);
     if (bink) {
@@ -29,7 +29,7 @@ std::unordered_set<uint32_t> g_held;  // movies whose frame was not decoded this
 
 }  // namespace
 
-X86_EXTERN_FUNC(GUEST_ORIG(BinkDoFrame));
+X86_EXTERN_ORIG(GUEST_ORIG(BinkDoFrame));
 X86_FUNC(GUEST(BinkDoFrame)) {
     uint32_t bink = R32(ctx.esp + 4);
     if (bink && CallGuest(ctx, kBinkWait, {bink})) {
@@ -42,7 +42,7 @@ X86_FUNC(GUEST(BinkDoFrame)) {
     GUEST_ORIG(BinkDoFrame)(ctx, base);
 }
 
-X86_EXTERN_FUNC(GUEST_ORIG(BinkNextFrame));
+X86_EXTERN_ORIG(GUEST_ORIG(BinkNextFrame));
 X86_FUNC(GUEST(BinkNextFrame)) {
     uint32_t bink = R32(ctx.esp + 4);
     {

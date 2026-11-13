@@ -47,7 +47,9 @@ void UpdatePads() {
     last = now;
     SDL_PumpEvents();
     SDL_Event e;
-    while (SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_EVENT_FIRST, SDL_EVENT_LAST) == 1) {
+    // the gamepad device notices only: on the SDL hosts (Linux) the window's own events stay in the queue for its
+    // loop; on Windows nothing else reads SDL's queue, and these were all it held
+    while (SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_EVENT_GAMEPAD_ADDED, SDL_EVENT_GAMEPAD_REMAPPED) == 1) {
         if (e.type == SDL_EVENT_GAMEPAD_ADDED) AddPad(e.gdevice.which);
         else if (e.type == SDL_EVENT_GAMEPAD_REMOVED) RemovePad(e.gdevice.which);
     }

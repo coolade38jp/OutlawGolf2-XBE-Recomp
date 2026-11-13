@@ -10,7 +10,15 @@
 #define X86_CAT(a, b) X86_CAT_(a, b)
 #define SYM(name) X86_CAT(0x, SYM_##name)                 // address
 #define GUEST(name) X86_CAT(sub_, SYM_##name)             // the function, a host override if there is one
+#ifdef XBE_DLOPEN_CODE
+// the recompiled body lives in the dlopen'd game code: looked up by its address at first use
+// (hle::GuestOrig in cpu/dispatch.cpp); nothing to declare at link time
+#define GUEST_ORIG(name) (::hle::GuestOrig(SYM(name)))
+#define X86_EXTERN_ORIG(orig)
+#else
 #define GUEST_ORIG(name) X86_CAT(__imp__sub_, SYM_##name)  // the recompiled body
+#define X86_EXTERN_ORIG(orig) X86_EXTERN_FUNC(orig)
+#endif
 
 // Argument maps. A library built with link time code generation may take a function's arguments in registers. The
 // config's [abi] says where each API argument of such a function is, image_symbols.h lists the maps as IMAGE_ABI,
@@ -19,6 +27,10 @@
 #define IMAGE_ABI(X)
 #endif
 namespace hle {
+#ifdef XBE_DLOPEN_CODE
+// the dlopen'd game code's recompiled body of the function at va (GUEST_ORIG above)
+X86Func* GuestOrig(uint32_t va);
+#endif
 enum Loc : uint8_t { stack, eax, ecx, edx, ebx, esi, edi, ebp };
 constexpr int kMaxArgs = 16;
 struct Map {
@@ -126,7 +138,7 @@ inline uint32_t Call(X86Context& ctx, uint32_t fn, const Map& m, std::initialize
 
 // Runs before the recompiled function, which then sees its arguments untouched
 #define HLE_WRAP_(fn, guest, orig, A)                \
-    X86_EXTERN_FUNC(orig);                           \
+    X86_EXTERN_ORIG(orig);                           \
     static void fn(X86Context& ctx, const A& a);     \
     X86_FUNC(guest) {                                \
         fn(ctx, A{ctx});                             \

@@ -12,7 +12,7 @@ set(ZYDIS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(ZYDIS_BUILD_DOXYGEN OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(zydis GIT_REPOSITORY https://github.com/zyantific/zydis.git GIT_TAG v4.1.1 GIT_SHALLOW TRUE)
 FetchContent_Declare(tomlplusplus GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git GIT_TAG v3.4.0 GIT_SHALLOW TRUE)
-FetchContent_Declare(imgui GIT_REPOSITORY https://github.com/ocornut/imgui.git GIT_TAG v1.91.0 GIT_SHALLOW TRUE)
+FetchContent_Declare(imgui GIT_REPOSITORY https://github.com/ocornut/imgui.git GIT_TAG v1.92.3 GIT_SHALLOW TRUE)
 # SDL3 for controllers, static so it links into the exe
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
@@ -39,6 +39,7 @@ foreach(layout ${XBE_LAYOUTS})
     list(APPEND XBE_COPY_LAYOUTS COMMAND ${CMAKE_COMMAND} -E make_directory ${XBE_COMPILER_DIR}/xdk/${build}
          COMMAND ${CMAKE_COMMAND} -E copy_if_different ${layout} ${XBE_COMPILER_DIR}/xdk/${build})
 endforeach()
+if(WIN32)
 add_custom_target(compiler_files ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${XBE_COMPILER_DIR}/config ${XBE_COMPILER_DIR}/include/cpu
             ${XBE_COMPILER_DIR}/include/freestanding
@@ -49,6 +50,25 @@ add_custom_target(compiler_files ALL
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${XBE_FREESTANDING_HEADERS} ${XBE_COMPILER_DIR}/include/freestanding
     ${XBE_COPY_LAYOUTS}
     VERBATIM)
+else()
+# Linux: clang and ld.lld, with clang's resource dir beside them (the -nostdinc game code build still reads its
+# stddef and friends from there; linux/game_code.cpp passes -resource-dir)
+find_program(XBE_CLANG clang REQUIRED)
+find_program(XBE_LD_LLD ld.lld REQUIRED)
+execute_process(COMMAND ${XBE_CLANG} -print-resource-dir OUTPUT_VARIABLE XBE_CLANG_RESOURCE_DIR
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+add_custom_target(compiler_files ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${XBE_COMPILER_DIR}/config ${XBE_COMPILER_DIR}/include/cpu
+            ${XBE_COMPILER_DIR}/include/freestanding ${XBE_COMPILER_DIR}/resource
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${XBE_CLANG} ${XBE_LD_LLD}
+            ${XBE_SDK_DIR}/tools/LLVM-LICENSE.txt ${XBE_COMPILER_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${XBE_GAME_CONFIGS} ${XBE_COMPILER_DIR}/config
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${XBE_COMPILER_HEADERS} ${XBE_COMPILER_DIR}/include/cpu
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${XBE_FREESTANDING_HEADERS} ${XBE_COMPILER_DIR}/include/freestanding
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${XBE_CLANG_RESOURCE_DIR} ${XBE_COMPILER_DIR}/resource
+    ${XBE_COPY_LAYOUTS}
+    VERBATIM)
+endif()
 
 # x86 to C++ recompiler
 file(GLOB XBE_RECOMP_SOURCES CONFIGURE_DEPENDS ${XBE_SDK_DIR}/tools/recomp/*.cpp)

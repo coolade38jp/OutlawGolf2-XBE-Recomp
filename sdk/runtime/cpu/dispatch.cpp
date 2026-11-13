@@ -17,6 +17,10 @@
 #include <unordered_set>
 #include <vector>
 
+#if defined(XBE_DLOPEN_CODE)
+#include <dlfcn.h>
+#endif
+
 #include "core/log.h"
 #include "cpu/x86_ops.h"
 #include "kernel/kernel.h"
@@ -58,6 +62,11 @@ uint32_t g_lo = 0, g_hi = 0;
 const X86FuncMapping* g_mappings = nullptr;
 const uint32_t* g_continuations = nullptr;
 uint32_t g_entry = 0;
+#elif defined(XBE_DLOPEN_CODE)
+// dlopen'd from the game code .so
+const X86FuncMapping* g_mappings = nullptr;
+const uint32_t* g_continuations = nullptr;
+uint32_t g_entry = 0;
 #else
 // the headless harness links them in
 const X86FuncMapping* g_mappings = X86FuncMappings;
@@ -95,13 +104,35 @@ bool Load(const std::filesystem::path& dll) {
     g_entry = *entry;
     return true;
 }
+#elif defined(XBE_DLOPEN_CODE)
+// the game code .so built on the player's PC at first start; its undefined host symbols resolve from the
+// executable, which links with its symbols exported (-rdynamic), taking the import library's place
+void* g_code_handle = nullptr;
+bool Load(const std::filesystem::path& so) {
+    void* h = dlopen(so.string().c_str(), RTLD_GLOBAL | RTLD_NOW);
+    if (!h) {
+        LOGE("dispatch: %s", dlerror());
+        return false;
+    }
+    g_code_handle = h;
+    g_mappings = reinterpret_cast<const X86FuncMapping*>(dlsym(h, "X86FuncMappings"));
+    g_continuations = reinterpret_cast<const uint32_t*>(dlsym(h, "X86Continuations"));
+    auto* lo = reinterpret_cast<const uint32_t*>(dlsym(h, "X86CodeBase"));
+    auto* hi = reinterpret_cast<const uint32_t*>(dlsym(h, "X86CodeEnd"));
+    auto* entry = reinterpret_cast<const uint32_t*>(dlsym(h, "X86EntryPoint"));
+    if (!g_mappings || !g_continuations || !lo || !hi || !entry) return false;
+    g_lo = *lo;
+    g_hi = *hi;
+    g_entry = *entry;
+    return true;
+}
 #endif
 
 uint32_t EntryPoint() { return g_entry; }
 bool InCode(uint32_t va) { return va >= g_lo && va < g_hi; }
 
 void Init() {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(XBE_DLOPEN_CODE)
     g_lo = X86CodeBase;
     g_hi = X86CodeEnd;
 #endif
@@ -136,6 +167,28 @@ uint32_t HostThunk(X86Func* fn) {
 uint32_t KernelThunkAddress(uint32_t ordinal) { return kKernelThunkBase + ordinal * 4; }
 
 }  // namespace dispatch
+
+#ifdef XBE_DLOPEN_CODE
+namespace hle {
+// the game code's recompiled body of the function at va: the import library's __imp__sub_ equivalent, resolved
+// once and cached
+X86Func* GuestOrig(uint32_t va) {
+    static std::mutex mu;
+    static std::unordered_map<uint32_t, X86Func*> cache;
+    std::lock_guard lock(mu);
+    if (auto it = cache.find(va); it != cache.end()) return it->second;
+    char name[16];
+    std::snprintf(name, sizeof(name), "sub_%08X", va);
+    auto* fn = reinterpret_cast<X86Func*>(dlsym(dispatch::g_code_handle, name));
+    if (!fn) {
+        LOGE("dispatch: the game code has no %s (a host override called a body the image lacks)", name);
+        fn = [](X86Context& ctx, uint8_t*) { x86_trap(ctx, 0, "call to a function the image lacks"); };
+    }
+    cache[va] = fn;
+    return fn;
+}
+}  // namespace hle
+#endif
 
 void x86_icall(X86Context& ctx, uint8_t* base, uint32_t target) {
     ctx.last_icall = target;

@@ -153,7 +153,7 @@ HLE_STDCALL(XInputSetState, 2) {
 
 // A recompiled image launches through the XAPI, then a process restart into its executable; any other
 // (the dashboard, updates) is refused and the title stays in its menu.
-X86_EXTERN_FUNC(GUEST_ORIG(XLaunchNewImageA));
+X86_EXTERN_ORIG(GUEST_ORIG(XLaunchNewImageA));
 X86_FUNC(GUEST(XLaunchNewImageA)) {
     std::string path = ReadCString(R32(ctx.esp + 4));
     if (ImageExe(path)) {
