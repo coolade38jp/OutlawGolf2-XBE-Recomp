@@ -34,6 +34,8 @@ Icon=$APP
 Categories=Game;
 Terminal=false
 EOF
+# appimagetool wants the desktop file at the AppDir root as well
+cp "$OUT/$APP.AppDir/usr/share/applications/$APP.desktop" "$OUT/$APP.AppDir/$APP.desktop"
 
 # the icon: a png from the repo if there is one, else a 1x1 placeholder so appimagetool is satisfied
 ICON=$(find "$ROOT" -name "*.png" -not -path "*/out/*" -not -path "*/build*" 2>/dev/null | head -1)
@@ -47,10 +49,15 @@ cp "$ICON" "$OUT/$APP.AppDir/$APP.png"
 cat > "$OUT/$APP.AppDir/AppRun" <<EOF
 #!/bin/bash
 # the directory holding the AppImage is the game folder, as on Windows: the player's assets/ and the exe's
-# settings, logs, hdd and shader cache live beside the image, and the first-launch build writes <exe>.so there
+# settings, logs, hdd, shader cache and first-launch build live beside the image; the mount itself is read-only
 HERE=\$(dirname "\$(readlink -f "\$0")")
-GAME_DIR=\$(dirname "\$(readlink -f "\${APPIMAGE:-\$HERE/$APP.AppDir}")")
+if [ -n "\${APPIMAGE:-}" ]; then
+  GAME_DIR=\$(dirname "\$(readlink -f "\$APPIMAGE")")
+else
+  GAME_DIR=\$HERE
+fi
 cd "\$GAME_DIR"
+export XBE_GAME_DIR="\$GAME_DIR"
 exec "\$HERE/usr/bin/$APP" "\$@"
 EOF
 chmod +x "$OUT/$APP.AppDir/AppRun"

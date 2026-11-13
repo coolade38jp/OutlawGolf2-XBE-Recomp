@@ -66,6 +66,9 @@ inline constexpr uint32_t kRenderHeights[] = {1440, 2160, 2880, 4320};
 bool Widescreen();
 
 std::filesystem::path ExeDir();
+// where the game data lives: settings, logs, saves, the shader cache, the player's assets and the first-launch
+// build. ExeDir(), except an AppImage wrapper sets XBE_GAME_DIR to the image's own folder (the mount is read-only)
+std::filesystem::path GameDir();
 // the game in assets (game_files.cpp): its folder and this executable's xbe, from the extracted files or a disc
 // image (.iso), which it mounts as D:; false after telling the player what is missing
 struct GameFiles {

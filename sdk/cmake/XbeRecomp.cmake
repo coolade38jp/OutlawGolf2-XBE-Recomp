@@ -53,8 +53,8 @@ add_custom_target(compiler_files ALL
 else()
 # Linux: clang and ld.lld, with clang's resource dir beside them (the -nostdinc game code build still reads its
 # stddef and friends from there; linux/game_code.cpp passes -resource-dir)
-find_program(XBE_CLANG clang REQUIRED)
-find_program(XBE_LD_LLD ld.lld REQUIRED)
+find_program(XBE_CLANG NAMES clang-21 clang clang-20 clang-19 REQUIRED)
+find_program(XBE_LD_LLD NAMES ld.lld-21 ld.lld REQUIRED)
 execute_process(COMMAND ${XBE_CLANG} -print-resource-dir OUTPUT_VARIABLE XBE_CLANG_RESOURCE_DIR
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
 add_custom_target(compiler_files ALL

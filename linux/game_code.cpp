@@ -61,7 +61,10 @@ struct Progress {
 Progress g_progress;
 std::string g_failure;  // the step that failed, written by the build thread before it ends
 
+// the tools (clang, lld, xbe_recomp, headers): inside the exe folder, which a packaged AppImage mounts
+// read-only. Everything written (the work folder, the .so, logs) goes to the game folder.
 fs::path CompilerDir() { return ExeDir() / "compiler"; }
+fs::path WorkRoot() { return GameDir() / "compiler" / "work"; }
 
 // the config in compiler/config whose [xbe] path is this xbe; an included one has no path
 fs::path ConfigFor(const std::string& xbe) {
@@ -88,12 +91,12 @@ std::vector<Image> Images() {
     return images;
 }
 
-fs::path WorkDir(const Image& image) { return CompilerDir() / "work" / image.exe; }
-fs::path CodeSo(const Image& image) { return ExeDir() / (image.exe + ".so"); }
+fs::path WorkDir(const Image& image) { return WorkRoot() / image.exe; }
+fs::path CodeSo(const Image& image) { return GameDir() / (image.exe + ".so"); }
 // beside the .so, so deleting the compiler folder keeps it: without it the .so was judged by file times and could
 // look stale, and the next start had no compiler to rebuild with
-fs::path StampFile(const Image& image) { return ExeDir() / (image.exe + ".built.txt"); }
-fs::path CompileLog() { return ExeDir() / "logs" / "compile.log"; }
+fs::path StampFile(const Image& image) { return GameDir() / (image.exe + ".built.txt"); }
+fs::path CompileLog() { return GameDir() / "logs" / "compile.log"; }
 
 // keeps the failed step for the message the player sees; false, to return
 bool RecordFailure(const std::string& what) {
@@ -461,7 +464,7 @@ std::string Blocker(const std::vector<Target>& targets) {
         if (ec) return "The game's folder cannot be written to. Move it somewhere you can write to.";
     }
     struct statvfs sv {};
-    if (!statvfs(CompilerDir().string().c_str(), &sv) && uint64_t(sv.f_bavail) * uint64_t(sv.f_frsize) < kDiskNeeded)
+    if (!statvfs(GameDir().string().c_str(), &sv) && uint64_t(sv.f_bavail) * uint64_t(sv.f_frsize) < kDiskNeeded)
         return "Preparing the game needs 1 GB of free space on the drive it is on.";
     return {};
 }
@@ -493,7 +496,9 @@ void ShowFailure() {
 
 bool PrepareGameCode(const GameFiles& game) {
     // one build at a time: a second copy of the game started meanwhile waits for it, then finds the .so current
-    int lock = open((CompilerDir() / "build.lock").string().c_str(), O_CREAT | O_RDWR, 0644);
+    std::error_code dir_ec;
+    fs::create_directories(GameDir() / "compiler", dir_ec);
+    int lock = open((GameDir() / "compiler" / "build.lock").string().c_str(), O_CREAT | O_RDWR, 0644);
     if (lock >= 0) flock(lock, LOCK_EX);
     std::vector<Image> images = Images();
     std::vector<Target> stale = StaleTargets(game, images);

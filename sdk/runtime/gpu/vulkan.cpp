@@ -1249,7 +1249,7 @@ private:
 bool VulkanBackend::Init(uint32_t width, uint32_t height) {
     guest_w_ = width;
     guest_h_ = height;
-    vkshader::Init(app::ExeDir() / "shadercache");
+    vkshader::Init(app::GameDir() / "shadercache");
     if (!CreateInstance() || !CreateSurface() || !PickDevice() || !CreateDevice()) return false;
     alloc_.Init(pd_, dev_);
     if (!CreateLayouts() || !CreateFrames() || !CreateSwapchain() || !CreateFixedImages()) return false;
@@ -1562,7 +1562,7 @@ bool VulkanBackend::CreateLayouts() {
     VK_CHECK(vkCreatePipelineLayout(dev_, &pi, nullptr, &layout_));
     // pipelines from earlier runs: building them is what stutters on a phone
     std::vector<char> blob;
-    std::ifstream f(app::ExeDir() / "shadercache" / "pipelines.bin", std::ios::binary);
+    std::ifstream f(app::GameDir() / "shadercache" / "pipelines.bin", std::ios::binary);
     if (f) blob.assign(std::istreambuf_iterator<char>(f), {});
     VkPipelineCacheCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
     ci.initialDataSize = blob.size();
@@ -3280,7 +3280,7 @@ void VulkanBackend::SavePipelineCache() {
     if (vkGetPipelineCacheData(dev_, cache_, &size, nullptr) != VK_SUCCESS || size == cache_saved_) return;
     std::vector<char> blob(size);
     if (vkGetPipelineCacheData(dev_, cache_, &size, blob.data()) != VK_SUCCESS) return;
-    std::filesystem::path p = app::ExeDir() / "shadercache" / "pipelines.bin", tmp = p;
+    std::filesystem::path p = app::GameDir() / "shadercache" / "pipelines.bin", tmp = p;
     tmp += ".tmp";
     {
         std::ofstream f(tmp, std::ios::binary);
@@ -3343,7 +3343,7 @@ bool VulkanBackend::InstallUiImage(int i, std::vector<uint8_t> bgra) {
 constexpr uint32_t kUiCacheMagic = 0x43495551;  // "QUIC"
 constexpr uint32_t kUiCacheVersion = 1;
 
-std::filesystem::path UiCacheFile() { return app::ExeDir() / "cache" / "ui_images.bin"; }
+std::filesystem::path UiCacheFile() { return app::GameDir() / "cache" / "ui_images.bin"; }
 
 void VulkanBackend::SaveUiImages() {
     std::error_code ec;

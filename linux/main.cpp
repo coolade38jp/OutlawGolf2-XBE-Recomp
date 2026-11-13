@@ -6,6 +6,7 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
+#include <cstdlib>
 #include <cstring>
 #include <deque>
 #include <map>
@@ -224,6 +225,14 @@ std::filesystem::path ExeDir() {
     return dir;
 }
 
+std::filesystem::path GameDir() {
+    static const std::filesystem::path dir = [] {
+        if (const char* d = std::getenv("XBE_GAME_DIR"); d && *d) return std::filesystem::path(d);
+        return ExeDir();
+    }();
+    return dir;
+}
+
 int Instance() {
     static const int n = [] {
         for (int i = 1; i + 1 < g_argc; i++)
@@ -345,7 +354,7 @@ int main(int argc, char** argv) {
         if (!std::strcmp(argv[i], "--relaunched")) relaunched = true;
     std::string log = app::kGame.log;
     if (app::Instance() > 1) log += "-" + std::to_string(app::Instance());
-    logx::Init((app::ExeDir() / "logs").string(), log, relaunched);
+    logx::Init((app::GameDir() / "logs").string(), log, relaunched);
     app::Load();
     if (app::kGame.init) app::kGame.init();
     if (relaunched && !logx::kVerbose) LOGR("Relaunched: %s", IMAGE_XBE);
@@ -378,7 +387,7 @@ int main(int argc, char** argv) {
     input::Init();
     if (app::kGame.window) app::kGame.window(g_window);
     std::string hdd = app::Instance() > 1 ? "hdd" + std::to_string(app::Instance()) : "hdd";
-    if (!kernel::Boot(std::move(game.xbe), IMAGE_XBE, game.dir.string(), (app::ExeDir() / hdd).string())) {
+    if (!kernel::Boot(std::move(game.xbe), IMAGE_XBE, game.dir.string(), (app::GameDir() / hdd).string())) {
         MessageBoxW(nullptr, L"The game failed to start, see the log in the logs folder.", app::kGame.short_title,
                     MB_ICONERROR);
         return 1;

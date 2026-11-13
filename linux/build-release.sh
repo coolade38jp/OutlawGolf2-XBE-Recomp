@@ -17,7 +17,7 @@ if ! clang-21 --version > /dev/null 2>&1; then
   bash /tmp/llvm.sh 21
 fi
 apt-get install -y -qq lld-21 2>&1 | tail -1
-# jammy's cmake is 3.22, the project needs 3.25+
+# jammy cmake is 3.22, the project needs 3.25+
 if ! cmake --version | grep -qE "version (3\.(2[5-9]|[3-9])|[4-9])"; then
   apt-get install -y -qq python3-pip 2>&1 | tail -1
   pip3 install --quiet cmake

@@ -19,7 +19,7 @@ namespace {
 
 const char* kModes[] = {"fullscreen", "borderless", "windowed"};
 
-std::filesystem::path File() { return ExeDir() / kGame.settings; }
+std::filesystem::path File() { return GameDir() / kGame.settings; }
 
 }  // namespace
 

@@ -20,9 +20,9 @@ namespace {
 
 namespace fs = std::filesystem;
 
-// assets beside the exe or in any folder above it (the build output)
+// assets beside the game folder or in any folder above it (the build output)
 fs::path FindAssets() {
-    auto dir = ExeDir();
+    auto dir = GameDir();
     std::error_code ec;
     for (int i = 0; i < 6; i++) {
         if (fs::is_directory(dir / "assets", ec)) return dir / "assets";
