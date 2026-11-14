@@ -5,7 +5,7 @@ SRC="/mnt/c/Users/Coola/Desktop/KIMI K3 PROJECTS/Golf Test/OutlawGolf2-XBE-Recom
 MSYS2_ARG_CONV_EXCL='*' wsl -d Ubuntu -- /bin/bash -c '
 set -e
 mkdir -p ~/og2
-rsync -a --delete --exclude .git --exclude build --exclude build-linux "/mnt/c/Users/Coola/Desktop/KIMI K3 PROJECTS/Golf Test/OutlawGolf2-XBE-Recomp/" ~/og2/
+rsync -a --delete --exclude .git --exclude build --exclude build-linux --exclude "assets/*.iso" --exclude out "/mnt/c/Users/Coola/Desktop/KIMI K3 PROJECTS/Golf Test/OutlawGolf2-XBE-Recomp/" ~/og2/
 cd ~/og2
 CC=clang CXX=clang++ cmake -G Ninja -B build-linux -DCMAKE_BUILD_TYPE=RelWithDebInfo > build-linux/configure.log 2>&1 || { tail -30 build-linux/configure.log; exit 1; }
 cmake --build build-linux -j"$(nproc)" > build-linux/build.log 2>&1 || true

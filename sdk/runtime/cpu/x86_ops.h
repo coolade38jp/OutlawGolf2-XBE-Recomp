@@ -24,12 +24,21 @@ typedef double __attribute__((aligned(1), may_alias)) x86_f64u;
 // The recompiled code is built on the player's PC into a DLL beside the executable (app/game_code.cpp). The executable
 // exports the runtime and its overrides, which the DLL imports; a function with no override links to its body.
 #ifdef X86_GAME_CODE
+#if defined(_WIN32)
 #define X86_HOST_API __declspec(dllimport)
 #define X86_HOST_EXPORT
 #define X86_WEAK_FUNC(name, impl) __pragma(comment(linker, "/alternatename:" #name "=" #impl))
 // the DLL links without a C runtime: the two symbols clang expects from one
 extern "C" __attribute__((used)) inline int _fltused = 0;
 #pragma comment(linker, "/alternatename:??_7type_info@@6B@=_fltused")  // catch clauses only compare type names
+#else
+// the same build as an .so dlopen'd by the executable: its undefined host symbols resolve from the executable
+// (-rdynamic) at load, and a function with no override stays weak, as in the harness
+#define X86_HOST_API
+#define X86_HOST_EXPORT __attribute__((visibility("default")))
+#define X86_WEAK_FUNC(name, impl) \
+    extern "C" __attribute__((weak, noinline)) void name(X86Context& __restrict ctx, uint8_t* base) { impl(ctx, base); }
+#endif
 #elif defined(_WIN32)
 #define X86_HOST_API __declspec(dllexport)
 #define X86_HOST_EXPORT __declspec(dllexport)

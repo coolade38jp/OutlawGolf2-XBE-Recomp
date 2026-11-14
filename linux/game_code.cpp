@@ -232,10 +232,14 @@ struct Processes {
         if (log_ >= 0) close(log_);
     }
 
-    // 0 when it did not start; its output goes to logs/compile.log
+    // 0 when it did not start; its output goes to logs/compile.log. dir is the child's working directory (the
+    // compile passes bare file names, as the Windows driver's cwd did)
     pid_t Start(char* const argv[], const fs::path& dir) {
         posix_spawn_file_actions_t fa;
         posix_spawn_file_actions_init(&fa);
+#if defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 29))
+        posix_spawn_file_actions_addchdir_np(&fa, dir.string().c_str());
+#endif
         if (log_ >= 0) {
             posix_spawn_file_actions_addopen(&fa, STDOUT_FILENO, CompileLog().string().c_str(),
                                              O_WRONLY | O_CREAT | O_APPEND, 0644);
